@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 
 const lines = [
-  { text: 'Quality workers.', color: 'text-white' },
-  { text: 'Verified hours.', color: 'text-sky-400' },
-  { text: 'Every day.', color: 'text-white' },
+  { text: 'Providing workforce', color: 'text-white' },
+  { text: 'solutions that empower', color: 'text-sky-400' },
+  { text: 'your business.', color: 'text-white' },
 ];
 
 const LINE_DELAY = 1900;
@@ -84,14 +84,6 @@ export function IntroAnimation() {
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo-transparent.png" alt="WorkSupply" className="h-16 w-auto" />
-          <motion.p
-            className="mt-2 text-xs tracking-wide text-zinc-400"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-          >
-            Providing workforce solutions that empower your business
-          </motion.p>
         </motion.div>
       )}
     </motion.div>
