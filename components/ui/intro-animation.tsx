@@ -9,13 +9,18 @@ const lines = [
   { text: 'Every day.', color: 'text-white' },
 ];
 
-const LINE_DELAY = 1500;
-const HOLD_AFTER_TEXT = 2000;
-const LOGO_DURATION = 1800;
+const LINE_DELAY = 1900;
+const HOLD_AFTER_TEXT = 2200;
+const LOGO_HOLD = 2000;
+const FADE_DURATION = 1000;
+
+export const INTRO_TOTAL_MS =
+  LINE_DELAY * lines.length + HOLD_AFTER_TEXT + LOGO_HOLD + FADE_DURATION;
 
 export function IntroAnimation() {
   const [visibleCount, setVisibleCount] = useState(0);
   const [showLogo, setShowLogo] = useState(false);
+  const [fadeOut, setFadeOut] = useState(false);
   const [done, setDone] = useState(false);
 
   useEffect(() => {
@@ -29,18 +34,27 @@ export function IntroAnimation() {
 
   useEffect(() => {
     if (!showLogo) return;
-    const t = setTimeout(() => setDone(true), LOGO_DURATION);
+    const t = setTimeout(() => setFadeOut(true), LOGO_HOLD);
     return () => clearTimeout(t);
   }, [showLogo]);
+
+  useEffect(() => {
+    if (!fadeOut) return;
+    const t = setTimeout(() => setDone(true), FADE_DURATION);
+    return () => clearTimeout(t);
+  }, [fadeOut]);
 
   if (done) return null;
 
   return (
     <motion.div
       className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-2 bg-neutral-950 px-6"
-      initial={{ opacity: 1 }}
-      animate={{ opacity: showLogo ? 0 : 1 }}
-      transition={{ duration: 0.8, delay: showLogo ? LOGO_DURATION / 1000 - 0.6 : 0 }}
+      animate={
+        fadeOut
+          ? { opacity: 0, scale: 1.08, filter: 'blur(12px)' }
+          : { opacity: 1, scale: 1, filter: 'blur(0px)' }
+      }
+      transition={{ duration: FADE_DURATION / 1000, ease: 'easeInOut' }}
       style={{ pointerEvents: 'none' }}
     >
       {!showLogo ? (
@@ -49,9 +63,13 @@ export function IntroAnimation() {
             <motion.span
               key={line.text}
               className={`text-2xl md:text-4xl font-semibold tracking-tight ${line.color}`}
-              initial={{ opacity: 0, y: 14 }}
-              animate={i < visibleCount ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.9, ease: 'easeOut' }}
+              initial={{ opacity: 0, y: 22, filter: 'blur(8px)' }}
+              animate={
+                i < visibleCount
+                  ? { opacity: 1, y: 0, filter: 'blur(0px)' }
+                  : {}
+              }
+              transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
             >
               {line.text}
             </motion.span>
@@ -60,15 +78,20 @@ export function IntroAnimation() {
       ) : (
         <motion.div
           className="flex flex-col items-center"
-          initial={{ opacity: 0, scale: 0.92 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.7 }}
+          initial={{ opacity: 0, scale: 0.85, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo-transparent.png" alt="WorkSupply" className="h-16 w-auto" />
-          <p className="mt-2 text-xs tracking-wide text-zinc-400">
+          <motion.p
+            className="mt-2 text-xs tracking-wide text-zinc-400"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
+          >
             Providing workforce solutions that empower your business
-          </p>
+          </motion.p>
         </motion.div>
       )}
     </motion.div>
