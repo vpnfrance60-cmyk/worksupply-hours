@@ -22,6 +22,7 @@ import {
   type LogStatus,
 } from '@/lib/queries';
 import { computeWeekPay, isWeekendDate } from '@/lib/pay';
+import { useLang, dateLocale } from '@/lib/i18n';
 
 function last7ParisDays(): string[] {
   const today = parisNow();
@@ -34,8 +35,8 @@ function last7ParisDays(): string[] {
   return out;
 }
 
-function fmtDay(iso: string) {
-  return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', {
+function fmtDay(iso: string, locale: string) {
+  return new Date(iso + 'T00:00:00').toLocaleDateString(locale, {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
@@ -49,6 +50,7 @@ const STATUS_BADGE: Record<LogStatus, string> = {
 };
 
 export default function WorkerPage() {
+  const { t, lang } = useLang();
   const [phase, setPhase] = useState<'loading' | 'signed-out' | 'ready'>('loading');
   const [worker, setWorker] = useState<Worker | null>(null);
   const [client, setClient] = useState<Client | null>(null);
@@ -58,6 +60,7 @@ export default function WorkerPage() {
   const [night, setNight] = useState('');
   const [comment, setComment] = useState('');
   const [submitMsg, setSubmitMsg] = useState('');
+  const [submitOk, setSubmitOk] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const load = useCallback(async () => {
@@ -85,7 +88,7 @@ export default function WorkerPage() {
 
   async function handleSignIn(id: string, password: string) {
     const { error } = await signInWorker(id, password);
-    if (error) return 'Wrong ID or password.';
+    if (error) return t.login.workerError;
     await load();
     return null;
   }
@@ -93,13 +96,17 @@ export default function WorkerPage() {
   async function handleSubmit() {
     setSubmitting(true);
     setSubmitMsg('');
-    const t = parseFloat(total) || 0;
+    const hoursVal = parseFloat(total) || 0;
     const n = parseFloat(night) || 0;
-    const { error } = await submitTodayHours(t, n, comment);
+    const { error } = await submitTodayHours(hoursVal, n, comment);
     if (error) {
-      setSubmitMsg(error.message);
+      setSubmitOk(false);
+      setSubmitMsg(
+        error.message.includes('18:00') ? t.worker.submissionWindowError : error.message
+      );
     } else {
-      setSubmitMsg('Saved ✓');
+      setSubmitOk(true);
+      setSubmitMsg(t.worker.saved);
       await load();
     }
     setSubmitting(false);
@@ -108,16 +115,16 @@ export default function WorkerPage() {
   if (phase === 'loading') {
     return (
       <BeamsBackground intensity="subtle">
-        <p className="text-zinc-400 text-sm">Loading…</p>
+        <p className="text-zinc-400 text-sm">{t.common.loading}</p>
       </BeamsBackground>
     );
   }
 
   if (phase === 'signed-out') {
     return (
-      <BeamsBackground intensity="medium" showLogo={false}>
+      <BeamsBackground intensity="medium">
         <div className="w-full px-4 flex justify-center">
-          <SplitLoginCard idLabel="Worker ID" idPlaceholder="e.g. WS-1024" onSubmit={handleSignIn} />
+          <SplitLoginCard onSubmit={handleSignIn} />
         </div>
       </BeamsBackground>
     );
@@ -141,22 +148,22 @@ export default function WorkerPage() {
             <div className="flex items-start justify-between gap-3 mb-4">
               <div>
                 <p className="text-sm text-zinc-400">
-                  Hi <span className="text-white font-medium">{worker?.name}</span>
+                  {t.worker.hi} <span className="text-white font-medium">{worker?.name}</span>
                 </p>
-                <h1 className="text-lg font-semibold text-white">Egg collection</h1>
-                <p className="text-xs text-zinc-500">for {client?.name}</p>
+                <h1 className="text-lg font-semibold text-white">{t.worker.eggCollection}</h1>
+                <p className="text-xs text-zinc-500">{t.worker.forClient} {client?.name}</p>
               </div>
               <button
                 onClick={() => signOut()}
                 className="text-xs text-zinc-400 underline underline-offset-4 hover:text-white"
               >
-                Sign out
+                {t.common.signOut}
               </button>
             </div>
 
             {yLog && (
               <p className="text-xs text-zinc-500 mb-3">
-                Yesterday: <span className="text-zinc-300">{yLog.hours_worked}h</span> · {yLog.status}
+                {t.worker.yesterday} <span className="text-zinc-300">{yLog.hours_worked}h</span> · {t.status[yLog.status]}
               </p>
             )}
 
@@ -164,12 +171,12 @@ export default function WorkerPage() {
             <div className="rounded-lg border-2 border-sky-500/40 bg-sky-500/5 p-3 mb-5">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium text-white">
-                  Today · {fmtDay(today)}
+                  {t.worker.today} · {fmtDay(today, dateLocale(lang))}
                   {isWeekendDate(today) && <span className="text-sky-400 text-xs"> · +25%</span>}
                 </span>
                 {todayLog && (
                   <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS_BADGE[todayLog.status]}`}>
-                    {todayLog.status}
+                    {t.status[todayLog.status]}
                   </span>
                 )}
               </div>
@@ -177,21 +184,21 @@ export default function WorkerPage() {
               {editableToday ? (
                 <div className="space-y-2.5">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm text-zinc-300">Hours worked</span>
+                    <span className="text-sm text-zinc-300">{t.worker.hoursWorked}</span>
                     <HourStepper value={total} onChange={setTotal} />
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-xs text-zinc-500">Of which after 6 PM (+25%)</span>
+                    <span className="text-xs text-zinc-500">{t.worker.ofWhichAfter6pm}</span>
                     <HourStepper size="sm" value={night} onChange={setNight} />
                   </div>
                   <input
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
-                    placeholder="Comment (optional)"
+                    placeholder={t.worker.commentPlaceholder}
                     className="w-full rounded-lg border-2 border-zinc-700 bg-zinc-950 px-3 py-1.5 text-sm text-white placeholder-zinc-500 outline-none focus:border-zinc-500"
                   />
                   {submitMsg && (
-                    <p className={`text-xs ${submitMsg.startsWith('Saved') ? 'text-emerald-400' : 'text-red-400'}`}>
+                    <p className={`text-xs ${submitOk ? 'text-emerald-400' : 'text-red-400'}`}>
                       {submitMsg}
                     </p>
                   )}
@@ -200,24 +207,22 @@ export default function WorkerPage() {
                     disabled={submitting || (parseFloat(total) || 0) === 0}
                     className="w-full rounded-lg bg-sky-500 text-white py-2 text-sm font-semibold transition hover:bg-sky-400 disabled:opacity-50"
                   >
-                    {submitting ? 'Saving…' : todayLog ? 'Update hours' : 'Submit hours'}
+                    {submitting ? t.worker.saving : todayLog ? t.worker.updateHours : t.worker.submitHours}
                   </button>
                 </div>
               ) : todayLog ? (
                 <p className="text-sm text-zinc-300">
-                  {todayLog.hours_worked}h submitted
-                  {todayLog.night_hours > 0 ? ` (${todayLog.night_hours}h after 6 PM)` : ''}.
-                  {todayLog.client_comment ? ` Client: “${todayLog.client_comment}”` : ''}
+                  {todayLog.hours_worked}h {t.worker.submitted}
+                  {todayLog.night_hours > 0 ? ` (${todayLog.night_hours}h ${t.worker.afterSixPm})` : ''}.
+                  {todayLog.client_comment ? ` ${t.worker.clientLabel} “${todayLog.client_comment}”` : ''}
                 </p>
               ) : (
-                <p className="text-sm text-zinc-400">
-                  Today&apos;s entry opens at 18:00 (Paris). Come back this evening to log your hours.
-                </p>
+                <p className="text-sm text-zinc-400">{t.worker.windowClosed}</p>
               )}
             </div>
 
             {/* PAST DAYS */}
-            <p className="text-xs uppercase tracking-wide text-zinc-500 mb-1">This week</p>
+            <p className="text-xs uppercase tracking-wide text-zinc-500 mb-1">{t.worker.thisWeek}</p>
             <div className="space-y-2">
               {days
                 .slice()
@@ -228,7 +233,7 @@ export default function WorkerPage() {
                   return (
                     <div key={d} className="flex items-center justify-between gap-3 rounded-lg bg-zinc-900/40 p-2">
                       <div>
-                        <span className="text-sm text-zinc-300">{fmtDay(d)}</span>
+                        <span className="text-sm text-zinc-300">{fmtDay(d, dateLocale(lang))}</span>
                         {isWeekendDate(d) && <span className="text-sky-400 text-xs"> · +25%</span>}
                         {l?.client_comment && (
                           <p className="text-xs text-zinc-500 mt-0.5">“{l.client_comment}”</p>
@@ -238,7 +243,7 @@ export default function WorkerPage() {
                         <span className="text-sm text-white">{l ? `${l.hours_worked}h` : '—'}</span>
                         {l && (
                           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS_BADGE[l.status]}`}>
-                            {l.status}
+                            {t.status[l.status]}
                           </span>
                         )}
                       </div>
@@ -251,29 +256,29 @@ export default function WorkerPage() {
             {pay && (
               <div className="border-t-2 border-zinc-700 mt-4 pt-3 space-y-1 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-zinc-400">Total this week</span>
+                  <span className="text-zinc-400">{t.worker.totalThisWeek}</span>
                   <span className="text-white font-semibold">{pay.totalHours}h</span>
                 </div>
                 {pay.premiumHours > 0 && (
                   <div className="flex justify-between text-xs">
-                    <span className="text-zinc-500">+25% hours (weekend / after 6 PM)</span>
+                    <span className="text-zinc-500">{t.worker.premiumHoursLabel}</span>
                     <span className="text-sky-400">{pay.premiumHours}h</span>
                   </div>
                 )}
                 {pay.weekly25Hours > 0 && (
                   <div className="flex justify-between text-xs">
-                    <span className="text-zinc-500">Weekly overtime 35–43h (+25%)</span>
+                    <span className="text-zinc-500">{t.worker.weekly25Label}</span>
                     <span className="text-sky-400">{pay.weekly25Hours}h</span>
                   </div>
                 )}
                 {pay.weekly50Hours > 0 && (
                   <div className="flex justify-between text-xs">
-                    <span className="text-zinc-500">Weekly overtime 43–48h (+50%)</span>
+                    <span className="text-zinc-500">{t.worker.weekly50Label}</span>
                     <span className="text-amber-400">{pay.weekly50Hours}h</span>
                   </div>
                 )}
                 <div className="flex justify-between pt-1">
-                  <span className="text-zinc-400">Estimated pay</span>
+                  <span className="text-zinc-400">{t.worker.estimatedPay}</span>
                   <span className="text-emerald-400 font-semibold">€{pay.pay.toFixed(2)}</span>
                 </div>
               </div>

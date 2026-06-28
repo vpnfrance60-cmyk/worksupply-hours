@@ -3,12 +3,14 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
+import { useLang } from '@/lib/i18n';
 
 interface SplitLoginCardProps {
   /** Returns an error message to show, or null on success. */
   onSubmit: (identifier: string, password: string) => Promise<string | null>;
   title?: string;
   subtitle?: string;
+  instructions?: string;
   idLabel?: string;
   idPlaceholder?: string;
   idType?: 'text' | 'email';
@@ -36,14 +38,22 @@ const ACCENT = {
 
 export function SplitLoginCard({
   onSubmit,
-  title = 'Welcome back',
-  subtitle = 'Sign in to log your hours and track day-by-day confirmations.',
-  idLabel = 'ID',
-  idPlaceholder = 'Worker ID',
+  title,
+  subtitle,
+  instructions,
+  idLabel,
+  idPlaceholder,
   idType = 'text',
   accent = 'blue',
 }: SplitLoginCardProps) {
+  const { t } = useLang();
   const theme = ACCENT[accent];
+  const resolvedTitle = title ?? t.login.workerTitle;
+  const resolvedSubtitle = subtitle ?? t.login.workerSubtitle;
+  const resolvedInstructions = instructions ?? t.login.workerInstructions;
+  const resolvedIdLabel = idLabel ?? t.login.workerIdLabel;
+  const resolvedIdPlaceholder = idPlaceholder ?? t.login.workerIdPlaceholder;
+
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -81,19 +91,19 @@ export function SplitLoginCard({
             />
           </div>
 
-          <h2 className="relative z-10 text-2xl font-bold text-white mb-2 text-center">{title}</h2>
-          <p className={cn('relative z-10 text-sm text-center max-w-xs', theme.subtitle)}>{subtitle}</p>
+          <h2 className="relative z-10 text-2xl font-bold text-white mb-2 text-center">{resolvedTitle}</h2>
+          <p className={cn('relative z-10 text-sm text-center max-w-xs', theme.subtitle)}>{resolvedSubtitle}</p>
         </div>
 
         {/* Right: sign-in form */}
         <div className="md:w-1/2 p-8 flex flex-col justify-center bg-zinc-900">
-          <h3 className="text-xl font-semibold text-white mb-1">Sign in</h3>
-          <p className="text-sm text-zinc-400 mb-6">Enter your {idLabel.toLowerCase()} and password.</p>
+          <h3 className="text-xl font-semibold text-white mb-1">{t.login.signInHeading}</h3>
+          <p className="text-sm text-zinc-400 mb-6">{resolvedInstructions}</p>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
               <label htmlFor="login-id" className="block text-sm font-medium text-zinc-300 mb-1.5">
-                {idLabel}
+                {resolvedIdLabel}
               </label>
               <input
                 id="login-id"
@@ -101,7 +111,7 @@ export function SplitLoginCard({
                 required
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                placeholder={idPlaceholder}
+                placeholder={resolvedIdPlaceholder}
                 autoComplete="username"
                 className={cn(
                   'w-full rounded-lg border-2 border-zinc-600 bg-zinc-950 px-3 py-2 text-sm text-white placeholder-zinc-500 outline-none transition',
@@ -112,7 +122,7 @@ export function SplitLoginCard({
 
             <div>
               <label htmlFor="login-pw" className="block text-sm font-medium text-zinc-300 mb-1.5">
-                Password
+                {t.login.passwordLabel}
               </label>
               <input
                 id="login-pw"
@@ -139,7 +149,7 @@ export function SplitLoginCard({
                 theme.button
               )}
             >
-              {busy ? 'Signing in…' : 'Sign in'}
+              {busy ? t.login.signingIn : t.login.signIn}
             </button>
           </form>
         </div>

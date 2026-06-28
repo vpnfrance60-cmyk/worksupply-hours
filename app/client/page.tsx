@@ -21,6 +21,7 @@ import {
 } from '@/lib/queries';
 import { isWeekendDate, computeWeekPay } from '@/lib/pay';
 import { downloadPayrollXlsx } from '@/lib/export';
+import { useLang, dateLocale } from '@/lib/i18n';
 
 function last7ParisDays(): string[] {
   const today = parisNow();
@@ -33,8 +34,8 @@ function last7ParisDays(): string[] {
   return out;
 }
 
-function fmtDayShort(iso: string) {
-  return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
+function fmtDayShort(iso: string, locale: string) {
+  return new Date(iso + 'T00:00:00').toLocaleDateString(locale, { weekday: 'short', day: 'numeric' });
 }
 
 const STATUS_BOX: Record<LogStatus, string> = {
@@ -44,6 +45,7 @@ const STATUS_BOX: Record<LogStatus, string> = {
 };
 
 export default function ClientReviewPage() {
+  const { t, lang } = useLang();
   const [phase, setPhase] = useState<'loading' | 'signed-out' | 'ready'>('loading');
   const [client, setClient] = useState<Client | null>(null);
   const [roster, setRoster] = useState<Worker[]>([]);
@@ -86,7 +88,7 @@ export default function ClientReviewPage() {
 
   async function handleSignIn(email: string, password: string) {
     const { error } = await signInClient(email, password);
-    if (error) return 'Wrong email or password.';
+    if (error) return t.login.clientError;
     await load();
     return null;
   }
@@ -111,7 +113,7 @@ export default function ClientReviewPage() {
     setExporting(true);
     try {
       const d = last7ParisDays();
-      await downloadPayrollXlsx(client, roster, logs, `${d[0]} → ${d[d.length - 1]}`);
+      await downloadPayrollXlsx(client, roster, logs, `${d[0]} → ${d[d.length - 1]}`, lang, t.pay, t.status);
     } finally {
       setExporting(false);
     }
@@ -120,22 +122,23 @@ export default function ClientReviewPage() {
   if (phase === 'loading') {
     return (
       <BeamsBackground intensity="subtle">
-        <p className="text-zinc-400 text-sm">Loading…</p>
+        <p className="text-zinc-400 text-sm">{t.common.loading}</p>
       </BeamsBackground>
     );
   }
 
   if (phase === 'signed-out') {
     return (
-      <BeamsBackground intensity="medium" showLogo={false}>
+      <BeamsBackground intensity="medium">
         <div className="w-full px-4 flex justify-center">
           <SplitLoginCard
             accent="green"
-            title="Client space"
-            subtitle="Live hours for every assigned worker — review, confirm, or refuse."
-            idLabel="Email"
+            title={t.login.clientTitle}
+            subtitle={t.login.clientSubtitle}
+            instructions={t.login.clientInstructions}
+            idLabel={t.login.clientIdLabel}
             idType="email"
-            idPlaceholder="you@example.com"
+            idPlaceholder={t.login.clientIdPlaceholder}
             onSubmit={handleSignIn}
           />
         </div>
@@ -157,31 +160,31 @@ export default function ClientReviewPage() {
             <div>
               <h1 className="text-xl font-semibold text-white mb-1">{client?.name}</h1>
               <p className="text-sm text-zinc-400">
-                {roster.length} worker{roster.length === 1 ? '' : 's'} ·{' '}
-                {pendingCount > 0 ? `${pendingCount} pending review` : 'all reviewed'}
+                {roster.length} {roster.length === 1 ? t.client.worker : t.client.workersPlural} ·{' '}
+                {pendingCount > 0 ? `${pendingCount} ${t.client.pendingReview}` : t.client.allReviewed}
               </p>
             </div>
             <div className="flex items-center gap-3">
               <span
                 className={`flex items-center gap-1.5 text-xs text-zinc-500 transition-opacity ${justUpdated ? 'opacity-100' : 'opacity-0'}`}
               >
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> updated
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> {t.client.updated}
               </span>
               <span className="flex items-center gap-1.5 text-xs text-zinc-500">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> live
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> {t.client.live}
               </span>
               <button
                 onClick={exportPayroll}
                 disabled={exporting}
                 className="flex items-center gap-1.5 rounded-lg border-2 border-emerald-400 bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-500 active:scale-95 disabled:opacity-50"
               >
-                <Download className="h-3.5 w-3.5" /> {exporting ? 'Preparing…' : 'Download payroll (Excel)'}
+                <Download className="h-3.5 w-3.5" /> {exporting ? t.client.preparing : t.client.downloadPayroll}
               </button>
               <button
                 onClick={() => signOut()}
                 className="text-xs text-zinc-400 underline underline-offset-4 hover:text-white"
               >
-                Sign out
+                {t.common.signOut}
               </button>
             </div>
           </div>
@@ -191,16 +194,16 @@ export default function ClientReviewPage() {
               <thead>
                 <tr className="border-b-2 border-zinc-700">
                   <th className="text-left text-xs font-medium text-zinc-400 px-3 py-2.5 sticky left-0 bg-zinc-950">
-                    Worker
+                    {t.client.tableWorker}
                   </th>
                   {days.map((d) => (
                     <th key={d} className="text-center text-xs font-medium text-zinc-400 px-2 py-2.5 min-w-[84px]">
-                      {fmtDayShort(d)}
+                      {fmtDayShort(d, dateLocale(lang))}
                       {isWeekendDate(d) && <span className="text-sky-400"> +25%</span>}
                     </th>
                   ))}
-                  <th className="text-center text-xs font-medium text-zinc-400 px-3 py-2.5">Week</th>
-                  <th className="text-center text-xs font-medium text-zinc-400 px-3 py-2.5">Pay</th>
+                  <th className="text-center text-xs font-medium text-zinc-400 px-3 py-2.5">{t.client.tableWeek}</th>
+                  <th className="text-center text-xs font-medium text-zinc-400 px-3 py-2.5">{t.client.tablePay}</th>
                 </tr>
               </thead>
               <tbody>
@@ -233,7 +236,7 @@ export default function ClientReviewPage() {
                           <div className={`rounded-lg border-2 px-1.5 py-1 text-center shadow-md ${STATUS_BOX[log.status]}`}>
                             <div className="text-white text-sm font-semibold">{log.hours_worked}h</div>
                             {log.night_hours > 0 && (
-                              <div className="text-[10px] text-white/80">{log.night_hours}h night</div>
+                              <div className="text-[10px] text-white/80">{log.night_hours}h {t.client.night}</div>
                             )}
                             {log.worker_comment && (
                               <div className="text-[10px] text-white/70 truncate" title={log.worker_comment}>
@@ -248,7 +251,7 @@ export default function ClientReviewPage() {
                                     autoFocus
                                     value={remark}
                                     onChange={(e) => setRemark(e.target.value)}
-                                    placeholder="Reason"
+                                    placeholder={t.client.reasonPlaceholder}
                                     className="w-full rounded border-2 border-amber-300 bg-amber-700 px-1 py-0.5 text-[10px] text-white placeholder-white/60 outline-none"
                                   />
                                   <div className="flex gap-1">
@@ -257,7 +260,7 @@ export default function ClientReviewPage() {
                                       disabled={busyId === log.id}
                                       className="flex-1 rounded bg-red-600 border-2 border-red-300 text-white font-semibold text-[10px] py-0.5 hover:bg-red-500 disabled:opacity-50"
                                     >
-                                      Refuse
+                                      {t.client.refuse}
                                     </button>
                                     <button
                                       onClick={() => setOpenCell(null)}
@@ -292,7 +295,7 @@ export default function ClientReviewPage() {
                               )
                             ) : (
                               <div className="text-[10px] font-bold text-white mt-0.5 uppercase tracking-wide">
-                                {log.status}
+                                {t.status[log.status]}
                               </div>
                             )}
                           </div>
@@ -311,7 +314,7 @@ export default function ClientReviewPage() {
               {roster.length === 0 && (
                 <tr>
                   <td colSpan={days.length + 3} className="text-center text-zinc-500 text-sm py-6">
-                    No workers assigned yet.
+                    {t.client.noWorkers}
                   </td>
                 </tr>
               )}

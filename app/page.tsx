@@ -4,10 +4,12 @@ import Link from 'next/link';
 import { motion } from 'motion/react';
 import { BeamsBackground } from '@/components/ui/beams-background';
 import { GlowingShadow } from '@/components/ui/glowing-shadow';
+import { useLang } from '@/lib/i18n';
 
 const CARDS_START_OFFSET = 0.4;
 
 export default function Home() {
+  const { t } = useLang();
   return (
     <BeamsBackground intensity="medium">
       <div className="flex flex-col items-center w-full -mt-[80px]">
@@ -26,7 +28,7 @@ export default function Home() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                     </svg>
                   </div>
-                  <h2 className="text-base font-semibold text-white">Worker space</h2>
+                  <h2 className="text-base font-semibold text-white">{t.home.workerSpace}</h2>
                 </div>
               </GlowingShadow>
             </Link>
@@ -45,7 +47,7 @@ export default function Home() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
-                  <h2 className="text-base font-semibold text-white">Client space</h2>
+                  <h2 className="text-base font-semibold text-white">{t.home.clientSpace}</h2>
                 </div>
               </GlowingShadow>
             </Link>
