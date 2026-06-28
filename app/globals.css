@@ -57,7 +57,7 @@ body {
   animation: fade-in 0.15s ease-out;
 }
 
-/* ===== Split login card: animated glowing blue border + animated logo ===== */
+/* ===== Split login card: animated glowing border ===== */
 @property --login-angle {
   syntax: "<angle>";
   inherits: false;
@@ -67,16 +67,6 @@ body {
 @keyframes login-border-spin {
   to {
     --login-angle: 360deg;
-  }
-}
-
-@keyframes login-logo-float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
   }
 }
 

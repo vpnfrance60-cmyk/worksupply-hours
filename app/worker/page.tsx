@@ -115,7 +115,7 @@ export default function WorkerPage() {
 
   if (phase === 'signed-out') {
     return (
-      <BeamsBackground intensity="medium">
+      <BeamsBackground intensity="medium" showLogo={false}>
         <div className="w-full px-4 flex justify-center">
           <SplitLoginCard idLabel="Worker ID" idPlaceholder="e.g. WS-1024" onSubmit={handleSignIn} />
         </div>

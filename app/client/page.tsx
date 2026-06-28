@@ -127,7 +127,7 @@ export default function ClientReviewPage() {
 
   if (phase === 'signed-out') {
     return (
-      <BeamsBackground intensity="medium">
+      <BeamsBackground intensity="medium" showLogo={false}>
         <div className="w-full px-4 flex justify-center">
           <SplitLoginCard
             accent="green"

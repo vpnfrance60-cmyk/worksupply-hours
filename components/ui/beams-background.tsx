@@ -8,6 +8,7 @@ interface AnimatedGradientBackgroundProps {
     className?: string;
     children?: React.ReactNode;
     intensity?: "subtle" | "medium" | "strong";
+    showLogo?: boolean;
 }
 
 interface Beam {
@@ -43,6 +44,7 @@ export function BeamsBackground({
     className,
     children,
     intensity = "strong",
+    showLogo = true,
 }: AnimatedGradientBackgroundProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const beamsRef = useRef<Beam[]>([]);
@@ -192,17 +194,24 @@ export function BeamsBackground({
                 }}
             />
 
-            <div
-                className="absolute inset-0"
-                style={{
-                    backgroundImage: "url('/logo-transparent.png')",
-                    backgroundRepeat: "no-repeat",
-                    backgroundPosition: "top 36px center",
-                    backgroundSize: "380px",
-                }}
-            />
+            {showLogo && (
+                <div
+                    className="absolute inset-0"
+                    style={{
+                        backgroundImage: "url('/logo-transparent.png')",
+                        backgroundRepeat: "no-repeat",
+                        backgroundPosition: "top 36px center",
+                        backgroundSize: "380px",
+                    }}
+                />
+            )}
 
-            <div className="relative z-10 flex min-h-screen w-full items-start justify-center pt-[320px] pb-12">
+            <div
+                className={cn(
+                    "relative z-10 flex min-h-screen w-full justify-center pb-12",
+                    showLogo ? "items-start pt-[320px]" : "items-center"
+                )}
+            >
                 {children}
             </div>
         </div>

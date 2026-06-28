@@ -64,18 +64,18 @@ export function SplitLoginCard({
   return (
     <div className={cn('login-glow-border w-full max-w-3xl mx-auto', theme.border)}>
       <div className="login-glow-inner flex flex-col md:flex-row overflow-hidden">
-        {/* Left: accent panel with animated logo */}
+        {/* Left: accent panel with logo */}
         <div className={cn('relative md:w-1/2 flex flex-col items-center justify-center p-8 overflow-hidden', theme.panel)}>
           <div className="pointer-events-none absolute -top-10 -left-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
           <div className={cn('pointer-events-none absolute -bottom-12 -right-8 h-44 w-44 rounded-full blur-2xl', theme.orb2)} />
 
-          <div className="login-logo-wrap relative z-10 mb-5 flex items-center justify-center">
-            <div className="login-halo absolute h-32 w-32 rounded-full" />
+          <div className="relative z-10 mb-5 flex items-center justify-center">
+            <div className="login-halo absolute h-44 w-44 rounded-full" />
             <Image
               src="/logo-transparent.png"
               alt="WorkSupply"
-              width={180}
-              height={64}
+              width={280}
+              height={190}
               priority
               className="login-logo relative"
             />
