@@ -1,168 +1,285 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { useCallback, useEffect, useState } from 'react';
 import { BeamsBackground } from '@/components/ui/beams-background';
+import { GlowingShadow } from '@/components/ui/glowing-shadow';
+import { HourStepper } from '@/components/ui/hour-stepper';
+import { SplitLoginCard } from '@/components/ui/split-login-card';
+import { supabase } from '@/lib/supabase';
+import {
+  signInWorker,
+  signOut,
+  getMyWorker,
+  getWorkerClient,
+  getMyWeekLogs,
+  submitTodayHours,
+  isSubmissionOpen,
+  parisToday,
+  parisNow,
+  type Worker,
+  type Client,
+  type DailyLog,
+  type LogStatus,
+} from '@/lib/queries';
+import { computeWeekPay, isWeekendDate } from '@/lib/pay';
 
-type Client = { id: string; name: string };
+function last7ParisDays(): string[] {
+  const today = parisNow();
+  const out: string[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    out.push(d.toLocaleDateString('en-CA'));
+  }
+  return out;
+}
+
+function fmtDay(iso: string) {
+  return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+const STATUS_BADGE: Record<LogStatus, string> = {
+  pending: 'bg-amber-500 text-white',
+  confirmed: 'bg-emerald-500 text-white',
+  refused: 'bg-red-500 text-white',
+};
 
 export default function WorkerPage() {
-  const [clients, setClients] = useState<Client[]>([]);
-  const [workerName, setWorkerName] = useState('');
-  const [workerEmail, setWorkerEmail] = useState('');
-  const [clientId, setClientId] = useState('');
-  const [hours, setHours] = useState('');
-  const [comment, setComment] = useState('');
-  const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
-  const [errorMsg, setErrorMsg] = useState('');
+  const [phase, setPhase] = useState<'loading' | 'signed-out' | 'ready'>('loading');
+  const [worker, setWorker] = useState<Worker | null>(null);
+  const [client, setClient] = useState<Client | null>(null);
+  const [logs, setLogs] = useState<DailyLog[]>([]);
 
-  useEffect(() => {
-    supabase
-      .from('clients')
-      .select('id, name')
-      .order('name')
-      .then(({ data }) => setClients(data ?? []));
+  const [total, setTotal] = useState('');
+  const [night, setNight] = useState('');
+  const [comment, setComment] = useState('');
+  const [submitMsg, setSubmitMsg] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const load = useCallback(async () => {
+    const w = await getMyWorker();
+    if (!w) {
+      setPhase('signed-out');
+      return;
+    }
+    const [c, wk] = await Promise.all([getWorkerClient(w.client_id), getMyWeekLogs()]);
+    setWorker(w);
+    setClient(c);
+    setLogs(wk);
+    const todayLog = wk.find((l) => l.log_date === parisToday());
+    setTotal(todayLog ? String(todayLog.hours_worked) : '');
+    setNight(todayLog ? String(todayLog.night_hours) : '');
+    setComment(todayLog?.worker_comment ?? '');
+    setPhase('ready');
   }, []);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setStatus('submitting');
-    setErrorMsg('');
+  useEffect(() => {
+    load();
+    const { data } = supabase.auth.onAuthStateChange(() => load());
+    return () => data.subscription.unsubscribe();
+  }, [load]);
 
-    const today = new Date().toISOString().slice(0, 10);
-
-    const { error } = await supabase.from('daily_logs').upsert(
-      {
-        worker_name: workerName.trim(),
-        worker_email: workerEmail.trim().toLowerCase(),
-        client_id: clientId,
-        log_date: today,
-        hours_worked: parseFloat(hours),
-        comment: comment.trim() || null,
-        status: 'pending',
-      },
-      { onConflict: 'worker_email,client_id,log_date' }
-    );
-
-    if (error) {
-      setStatus('error');
-      setErrorMsg(error.message);
-    } else {
-      setStatus('success');
-    }
+  async function handleSignIn(id: string, password: string) {
+    const { error } = await signInWorker(id, password);
+    if (error) return 'Wrong ID or password.';
+    await load();
+    return null;
   }
 
-  if (status === 'success') {
+  async function handleSubmit() {
+    setSubmitting(true);
+    setSubmitMsg('');
+    const t = parseFloat(total) || 0;
+    const n = parseFloat(night) || 0;
+    const { error } = await submitTodayHours(t, n, comment);
+    if (error) {
+      setSubmitMsg(error.message);
+    } else {
+      setSubmitMsg('Saved ✓');
+      await load();
+    }
+    setSubmitting(false);
+  }
+
+  if (phase === 'loading') {
+    return (
+      <BeamsBackground intensity="subtle">
+        <p className="text-zinc-400 text-sm">Loading…</p>
+      </BeamsBackground>
+    );
+  }
+
+  if (phase === 'signed-out') {
     return (
       <BeamsBackground intensity="medium">
-        <div className="max-w-sm text-center px-4">
-          <div className="rounded-2xl border-2 border-zinc-700 bg-zinc-800 shadow-2xl p-7">
-            <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500">
-              <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <h1 className="text-xl font-semibold text-white mb-2">Hours logged for today</h1>
-            <p className="text-zinc-400 text-sm mb-6">
-              Submitted again today? It just updates your existing entry — no duplicates.
-            </p>
-            <button
-              onClick={() => setStatus('idle')}
-              className="text-sm text-zinc-200 underline underline-offset-4 hover:text-white"
-            >
-              Submit another entry
-            </button>
-          </div>
+        <div className="w-full px-4 flex justify-center">
+          <SplitLoginCard idLabel="Worker ID" idPlaceholder="e.g. WS-1024" onSubmit={handleSignIn} />
         </div>
       </BeamsBackground>
     );
   }
 
+  const today = parisToday();
+  const days = last7ParisDays();
+  const byDate = new Map(logs.map((l) => [l.log_date, l]));
+  const todayLog = byDate.get(today);
+  const windowOpen = isSubmissionOpen();
+  const editableToday = windowOpen && (!todayLog || todayLog.status === 'pending');
+  const pay = client ? computeWeekPay(logs, client.hourly_rate) : null;
+  const yLog = byDate.get(days[days.length - 2]);
+
   return (
     <BeamsBackground intensity="medium">
-      <div className="w-full max-w-sm px-4">
-        <div className="rounded-2xl border-2 border-zinc-700 bg-zinc-800 shadow-2xl p-7">
-          <h1 className="text-lg font-semibold text-white mb-1">Log today&apos;s hours</h1>
-          <p className="text-sm text-zinc-400 mb-6">Fill this in once per day.</p>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1.5">Your name</label>
-              <input
-                required
-                value={workerName}
-                onChange={(e) => setWorkerName(e.target.value)}
-                className="w-full rounded-lg border-2 border-zinc-600 bg-zinc-900 px-3 py-2 text-sm text-white placeholder-zinc-500 outline-none transition focus:border-zinc-400"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1.5">Your email</label>
-              <input
-                required
-                type="email"
-                value={workerEmail}
-                onChange={(e) => setWorkerEmail(e.target.value)}
-                className="w-full rounded-lg border-2 border-zinc-600 bg-zinc-900 px-3 py-2 text-sm text-white placeholder-zinc-500 outline-none transition focus:border-zinc-400"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1.5">Client</label>
-              <select
-                required
-                value={clientId}
-                onChange={(e) => setClientId(e.target.value)}
-                className="w-full rounded-lg border-2 border-zinc-600 bg-zinc-900 px-3 py-2 text-sm text-white outline-none transition focus:border-zinc-400 [&>option]:bg-zinc-900"
+      <div className="w-full px-4 flex justify-center">
+        <GlowingShadow width="94vw">
+          <div className="w-full px-2">
+            {/* header */}
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div>
+                <p className="text-sm text-zinc-400">
+                  Hi <span className="text-white font-medium">{worker?.name}</span>
+                </p>
+                <h1 className="text-lg font-semibold text-white">Egg collection</h1>
+                <p className="text-xs text-zinc-500">for {client?.name}</p>
+              </div>
+              <button
+                onClick={() => signOut()}
+                className="text-xs text-zinc-400 underline underline-offset-4 hover:text-white"
               >
-                <option value="" disabled>
-                  Select client
-                </option>
-                {clients.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+                Sign out
+              </button>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1.5">Hours worked</label>
-              <input
-                required
-                type="number"
-                step="0.5"
-                min="0"
-                max="24"
-                value={hours}
-                onChange={(e) => setHours(e.target.value)}
-                className="w-full rounded-lg border-2 border-zinc-600 bg-zinc-900 px-3 py-2 text-sm text-white placeholder-zinc-500 outline-none transition focus:border-zinc-400"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1.5">Comment (optional)</label>
-              <textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                className="w-full rounded-lg border-2 border-zinc-600 bg-zinc-900 px-3 py-2 text-sm text-white placeholder-zinc-500 outline-none transition focus:border-zinc-400"
-                rows={2}
-              />
-            </div>
-
-            {status === 'error' && (
-              <p className="text-sm text-red-400">{errorMsg}</p>
+            {yLog && (
+              <p className="text-xs text-zinc-500 mb-3">
+                Yesterday: <span className="text-zinc-300">{yLog.hours_worked}h</span> · {yLog.status}
+              </p>
             )}
 
-            <button
-              type="submit"
-              disabled={status === 'submitting'}
-              className="w-full rounded-lg bg-sky-500 text-white py-2.5 text-sm font-semibold transition hover:bg-sky-400 disabled:opacity-50"
-            >
-              {status === 'submitting' ? 'Submitting…' : 'Submit hours'}
-            </button>
-          </form>
-        </div>
+            {/* TODAY */}
+            <div className="rounded-lg border-2 border-sky-500/40 bg-sky-500/5 p-3 mb-5">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-white">
+                  Today · {fmtDay(today)}
+                  {isWeekendDate(today) && <span className="text-sky-400 text-xs"> · +25%</span>}
+                </span>
+                {todayLog && (
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS_BADGE[todayLog.status]}`}>
+                    {todayLog.status}
+                  </span>
+                )}
+              </div>
+
+              {editableToday ? (
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm text-zinc-300">Hours worked</span>
+                    <HourStepper value={total} onChange={setTotal} />
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-xs text-zinc-500">Of which after 6 PM (+25%)</span>
+                    <HourStepper size="sm" value={night} onChange={setNight} />
+                  </div>
+                  <input
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    placeholder="Comment (optional)"
+                    className="w-full rounded-lg border-2 border-zinc-700 bg-zinc-950 px-3 py-1.5 text-sm text-white placeholder-zinc-500 outline-none focus:border-zinc-500"
+                  />
+                  {submitMsg && (
+                    <p className={`text-xs ${submitMsg.startsWith('Saved') ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {submitMsg}
+                    </p>
+                  )}
+                  <button
+                    onClick={handleSubmit}
+                    disabled={submitting || (parseFloat(total) || 0) === 0}
+                    className="w-full rounded-lg bg-sky-500 text-white py-2 text-sm font-semibold transition hover:bg-sky-400 disabled:opacity-50"
+                  >
+                    {submitting ? 'Saving…' : todayLog ? 'Update hours' : 'Submit hours'}
+                  </button>
+                </div>
+              ) : todayLog ? (
+                <p className="text-sm text-zinc-300">
+                  {todayLog.hours_worked}h submitted
+                  {todayLog.night_hours > 0 ? ` (${todayLog.night_hours}h after 6 PM)` : ''}.
+                  {todayLog.client_comment ? ` Client: “${todayLog.client_comment}”` : ''}
+                </p>
+              ) : (
+                <p className="text-sm text-zinc-400">
+                  Today&apos;s entry opens at 18:00 (Paris). Come back this evening to log your hours.
+                </p>
+              )}
+            </div>
+
+            {/* PAST DAYS */}
+            <p className="text-xs uppercase tracking-wide text-zinc-500 mb-1">This week</p>
+            <div className="space-y-2">
+              {days
+                .slice()
+                .reverse()
+                .filter((d) => d !== today)
+                .map((d) => {
+                  const l = byDate.get(d);
+                  return (
+                    <div key={d} className="flex items-center justify-between gap-3 rounded-lg bg-zinc-900/40 p-2">
+                      <div>
+                        <span className="text-sm text-zinc-300">{fmtDay(d)}</span>
+                        {isWeekendDate(d) && <span className="text-sky-400 text-xs"> · +25%</span>}
+                        {l?.client_comment && (
+                          <p className="text-xs text-zinc-500 mt-0.5">“{l.client_comment}”</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-white">{l ? `${l.hours_worked}h` : '—'}</span>
+                        {l && (
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS_BADGE[l.status]}`}>
+                            {l.status}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+
+            {/* PAY SUMMARY */}
+            {pay && (
+              <div className="border-t-2 border-zinc-700 mt-4 pt-3 space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-zinc-400">Total this week</span>
+                  <span className="text-white font-semibold">{pay.totalHours}h</span>
+                </div>
+                {pay.premiumHours > 0 && (
+                  <div className="flex justify-between text-xs">
+                    <span className="text-zinc-500">+25% hours (weekend / after 6 PM)</span>
+                    <span className="text-sky-400">{pay.premiumHours}h</span>
+                  </div>
+                )}
+                {pay.weekly25Hours > 0 && (
+                  <div className="flex justify-between text-xs">
+                    <span className="text-zinc-500">Weekly overtime 35–43h (+25%)</span>
+                    <span className="text-sky-400">{pay.weekly25Hours}h</span>
+                  </div>
+                )}
+                {pay.weekly50Hours > 0 && (
+                  <div className="flex justify-between text-xs">
+                    <span className="text-zinc-500">Weekly overtime 43–48h (+50%)</span>
+                    <span className="text-amber-400">{pay.weekly50Hours}h</span>
+                  </div>
+                )}
+                <div className="flex justify-between pt-1">
+                  <span className="text-zinc-400">Estimated pay</span>
+                  <span className="text-emerald-400 font-semibold">€{pay.pay.toFixed(2)}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </GlowingShadow>
       </div>
     </BeamsBackground>
   );

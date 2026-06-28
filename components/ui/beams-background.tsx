@@ -197,12 +197,12 @@ export function BeamsBackground({
                 style={{
                     backgroundImage: "url('/logo-transparent.png')",
                     backgroundRepeat: "no-repeat",
-                    backgroundPosition: "top 28px center",
-                    backgroundSize: "260px",
+                    backgroundPosition: "top 36px center",
+                    backgroundSize: "380px",
                 }}
             />
 
-            <div className="relative z-10 flex min-h-screen w-full items-start justify-center pt-[230px] pb-12">
+            <div className="relative z-10 flex min-h-screen w-full items-start justify-center pt-[320px] pb-12">
                 {children}
             </div>
         </div>

@@ -24,3 +24,126 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.widget-card {
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.08), 0 4px 16px -8px rgba(56, 189, 248, 0.3),
+    0 10px 25px -16px rgba(0, 0, 0, 0.6);
+  transition: box-shadow 0.25s ease, transform 0.15s ease;
+}
+
+.widget-card:hover {
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.16), 0 5px 20px -6px rgba(56, 189, 248, 0.4),
+    0 12px 30px -16px rgba(0, 0, 0, 0.65);
+}
+
+.widget-card:active {
+  transform: scale(0.97) translateY(1px);
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.12), 0 2px 8px -4px rgba(56, 189, 248, 0.25),
+    0 4px 12px -8px rgba(0, 0, 0, 0.55);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.15s ease-out;
+}
+
+/* ===== Split login card: animated glowing blue border + animated logo ===== */
+@property --login-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes login-border-spin {
+  to {
+    --login-angle: 360deg;
+  }
+}
+
+@keyframes login-logo-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes login-halo-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
+
+.login-glow-border {
+  --login-glow-soft: rgba(56, 189, 248, 0.15);
+  --login-glow-1: #38bdf8;
+  --login-glow-2: #0ea5e9;
+
+  position: relative;
+  border-radius: 1.25rem;
+  padding: 2px;
+  background: conic-gradient(
+    from var(--login-angle),
+    transparent 0deg,
+    var(--login-glow-soft) 40deg,
+    var(--login-glow-1) 95deg,
+    var(--login-glow-2) 140deg,
+    var(--login-glow-soft) 190deg,
+    transparent 240deg,
+    transparent 360deg
+  );
+  animation: login-border-spin 4s linear infinite;
+}
+
+.login-glow-border--green {
+  --login-glow-soft: rgba(16, 185, 129, 0.15);
+  --login-glow-1: #34d399;
+  --login-glow-2: #059669;
+}
+
+.login-glow-border::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: inherit;
+  filter: blur(18px);
+  opacity: 0.55;
+  z-index: -1;
+}
+
+.login-glow-inner {
+  border-radius: calc(1.25rem - 2px);
+  background: #18181b;
+}
+
+.login-logo-wrap {
+  animation: login-logo-float 3.5s ease-in-out infinite;
+}
+
+.login-logo {
+  filter: brightness(0) invert(1) drop-shadow(0 0 8px rgba(255, 255, 255, 0.45));
+}
+
+.login-halo {
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.55) 0%, transparent 65%);
+  animation: login-halo-pulse 3.5s ease-in-out infinite;
+}
