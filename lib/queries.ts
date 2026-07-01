@@ -45,7 +45,7 @@ export function parisToday(): string {
   return parisNow().toLocaleDateString('en-CA'); // 'YYYY-MM-DD'
 }
 export function isSubmissionOpen(): boolean {
-  return parisNow().getHours() >= 18; // 18:00 → 23:59 Paris
+  return true; // TEST: submission window disabled — workers can submit any time of day
 }
 
 // ── Auth ────────────────────────────────────────────────────────────

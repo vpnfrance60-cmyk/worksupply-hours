@@ -5,8 +5,8 @@
 -- Business rules enforced HERE (not just in the UI, so they can't be
 -- bypassed by editing client-side code):
 --   • One log row per worker per day (unique worker_id + log_date).
---   • A worker can only submit "today" (Europe/Paris) and only in the
---     18:00–24:00 window.
+--   • A worker can only submit "today" (Europe/Paris).
+--     TEST: the 18:00–24:00 submission window has been removed.
 --   • Only the client a worker is assigned to can confirm/refuse + comment.
 --   • Nothing is ever deleted → full history kept for payment/reporting,
 --     even though the UI only shows a rolling 7-day window.
@@ -95,7 +95,8 @@ create or replace function current_worker_client_id() returns uuid
 -- They run as SECURITY DEFINER (bypass RLS) but enforce every rule.
 -- =====================================================================
 
--- Worker submits / re-submits TODAY's hours (18:00–24:00 Paris only).
+-- Worker submits / re-submits TODAY's hours.
+-- TEST: submission window disabled — hours can be submitted any time of day.
 -- p_night = the portion of p_hours worked after 18:00 (gets the +25%).
 create or replace function submit_today_hours(p_hours numeric, p_night numeric default 0, p_comment text default null)
 returns daily_logs
@@ -108,10 +109,6 @@ begin
   select * into v_worker from workers where user_id = auth.uid();
   if v_worker.id is null then
     raise exception 'Not a worker account';
-  end if;
-
-  if paris_hour() < 18 then
-    raise exception 'Submission opens at 18:00 (Europe/Paris)';
   end if;
 
   if p_night > p_hours then
