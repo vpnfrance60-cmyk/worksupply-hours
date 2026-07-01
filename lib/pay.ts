@@ -31,44 +31,55 @@ export type PayBreakdown = {
 
 /**
  * Computes pay for a set of daily logs (one work-week), stacking the daily
- * +25% with the weekly overtime tier. Hours are processed chronologically in
- * 0.5h steps so each hour gets the correct weekly band.
+ * +25% with the weekly overtime tier. Hours are processed chronologically as
+ * exact fractions (so entered minutes count) — each partial hour is split at
+ * the weekly-band boundaries and gets the correct band.
  */
 export function computeWeekPay(logs: DailyLog[], hourlyRate: number): PayBreakdown {
   const sorted = [...logs].sort((a, b) => a.log_date.localeCompare(b.log_date));
-  let cumHalves = 0;
+  let cumHours = 0;
   let pay = 0;
   let totalHours = 0;
   let premiumHours = 0;
   let weekly25 = 0;
   let weekly50 = 0;
 
-  const step = (count: number, dailyMult: number) => {
-    for (let i = 0; i < count; i++) {
-      const wMult = weeklyMultiplierAt(cumHalves / 2);
-      pay += hourlyRate * 0.5 * dailyMult * wMult;
-      if (wMult === 1.5) weekly50 += 0.5;
-      else if (wMult === 1.25) weekly25 += 0.5;
-      if (dailyMult > 1) premiumHours += 0.5;
-      cumHalves++;
+  // Add `hours` (may be fractional) of work at a given daily multiplier,
+  // splitting the run across the weekly bands so minutes land correctly.
+  const addHours = (hours: number, dailyMult: number) => {
+    let remaining = hours;
+    while (remaining > 1e-9) {
+      const wMult = weeklyMultiplierAt(cumHours);
+      const boundary =
+        cumHours < WEEKLY_25_START ? WEEKLY_25_START
+        : cumHours < WEEKLY_50_START ? WEEKLY_50_START
+        : Infinity;
+      const chunk = Math.min(remaining, boundary - cumHours);
+      pay += hourlyRate * chunk * dailyMult * wMult;
+      if (wMult === 1.5) weekly50 += chunk;
+      else if (wMult === 1.25) weekly25 += chunk;
+      if (dailyMult > 1) premiumHours += chunk;
+      cumHours += chunk;
+      remaining -= chunk;
     }
   };
 
   for (const log of sorted) {
-    const totalHalves = Math.round(log.hours_worked * 2);
-    const premiumHalves = isWeekendDate(log.log_date)
-      ? totalHalves
-      : Math.round(Math.min(log.night_hours, log.hours_worked) * 2);
-    step(totalHalves - premiumHalves, 1.0); // normal hours first
-    step(premiumHalves, 1.25); // then daily-premium hours
-    totalHours += log.hours_worked;
+    const total = log.hours_worked;
+    const premium = isWeekendDate(log.log_date)
+      ? total
+      : Math.min(log.night_hours, total);
+    addHours(total - premium, 1.0); // normal hours first
+    addHours(premium, 1.25); // then daily-premium hours
+    totalHours += total;
   }
 
+  const round2 = (n: number) => Math.round(n * 100) / 100;
   return {
-    totalHours,
-    premiumHours,
-    weekly25Hours: weekly25,
-    weekly50Hours: weekly50,
-    pay: Math.round(pay * 100) / 100,
+    totalHours: round2(totalHours),
+    premiumHours: round2(premiumHours),
+    weekly25Hours: round2(weekly25),
+    weekly50Hours: round2(weekly50),
+    pay: round2(pay),
   };
 }

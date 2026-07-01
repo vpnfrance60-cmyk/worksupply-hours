@@ -55,8 +55,8 @@ create table daily_logs (
   worker_id      uuid not null references workers(id) on delete cascade,
   client_id      uuid not null references clients(id) on delete cascade,
   log_date       date not null,
-  hours_worked   numeric(4,1) not null check (hours_worked >= 0 and hours_worked <= 24),
-  night_hours    numeric(4,1) not null default 0   -- portion worked after 18:00 (gets +25%)
+  hours_worked   numeric(5,2) not null check (hours_worked >= 0 and hours_worked <= 24),
+  night_hours    numeric(5,2) not null default 0   -- portion worked after 18:00 (gets +25%)
                    check (night_hours >= 0 and night_hours <= hours_worked),
   worker_comment text,
   status         log_status not null default 'pending',

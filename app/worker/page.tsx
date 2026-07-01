@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BeamsBackground } from '@/components/ui/beams-background';
 import { GlowingShadow } from '@/components/ui/glowing-shadow';
-import { HourStepper } from '@/components/ui/hour-stepper';
+import { TimeInput } from '@/components/ui/time-input';
 import { SplitLoginCard } from '@/components/ui/split-login-card';
 import { supabase } from '@/lib/supabase';
 import {
@@ -185,11 +185,11 @@ export default function WorkerPage() {
                 <div className="space-y-2.5">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-sm text-zinc-300">{t.worker.hoursWorked}</span>
-                    <HourStepper value={total} onChange={setTotal} />
+                    <TimeInput value={total} onChange={setTotal} />
                   </div>
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-xs text-zinc-500">{t.worker.ofWhichAfter6pm}</span>
-                    <HourStepper size="sm" value={night} onChange={setNight} />
+                    <TimeInput size="sm" value={night} onChange={setNight} />
                   </div>
                   <input
                     value={comment}
