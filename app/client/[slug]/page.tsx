@@ -16,6 +16,7 @@ import {
   type LogStatus,
 } from '@/lib/queries';
 import { isWeekendDate } from '@/lib/pay';
+import { formatHours } from '@/lib/format';
 
 type Row = DailyLog & { worker: { name: string } };
 
@@ -136,8 +137,8 @@ export default function ClientReviewPage() {
                   <p className="text-sm text-zinc-400">
                     {fmtDay(log.log_date)}
                     {isWeekendDate(log.log_date) && <span className="text-sky-400"> · +25%</span>} ·{' '}
-                    {log.hours_worked}h
-                    {log.night_hours > 0 ? ` (${log.night_hours}h after 6 PM)` : ''}
+                    {formatHours(log.hours_worked)}
+                    {log.night_hours > 0 ? ` (${formatHours(log.night_hours)} after 6 PM)` : ''}
                     {log.worker_comment ? ` — “${log.worker_comment}”` : ''}
                   </p>
                   {log.client_comment && (

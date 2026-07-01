@@ -22,6 +22,7 @@ import {
   type LogStatus,
 } from '@/lib/queries';
 import { computeWeekPay, isWeekendDate } from '@/lib/pay';
+import { formatHours } from '@/lib/format';
 import { useLang, dateLocale } from '@/lib/i18n';
 
 function last7ParisDays(): string[] {
@@ -163,7 +164,7 @@ export default function WorkerPage() {
 
             {yLog && (
               <p className="text-xs text-zinc-500 mb-3">
-                {t.worker.yesterday} <span className="text-zinc-300">{yLog.hours_worked}h</span> · {t.status[yLog.status]}
+                {t.worker.yesterday} <span className="text-zinc-300">{formatHours(yLog.hours_worked)}</span> · {t.status[yLog.status]}
               </p>
             )}
 
@@ -212,8 +213,8 @@ export default function WorkerPage() {
                 </div>
               ) : todayLog ? (
                 <p className="text-sm text-zinc-300">
-                  {todayLog.hours_worked}h {t.worker.submitted}
-                  {todayLog.night_hours > 0 ? ` (${todayLog.night_hours}h ${t.worker.afterSixPm})` : ''}.
+                  {formatHours(todayLog.hours_worked)} {t.worker.submitted}
+                  {todayLog.night_hours > 0 ? ` (${formatHours(todayLog.night_hours)} ${t.worker.afterSixPm})` : ''}.
                   {todayLog.client_comment ? ` ${t.worker.clientLabel} “${todayLog.client_comment}”` : ''}
                 </p>
               ) : (
@@ -240,7 +241,7 @@ export default function WorkerPage() {
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm text-white">{l ? `${l.hours_worked}h` : '—'}</span>
+                        <span className="text-sm text-white">{l ? formatHours(l.hours_worked) : '—'}</span>
                         {l && (
                           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS_BADGE[l.status]}`}>
                             {t.status[l.status]}
@@ -257,24 +258,24 @@ export default function WorkerPage() {
               <div className="border-t-2 border-zinc-700 mt-4 pt-3 space-y-1 text-sm">
                 <div className="flex justify-between">
                   <span className="text-zinc-400">{t.worker.totalThisWeek}</span>
-                  <span className="text-white font-semibold">{pay.totalHours}h</span>
+                  <span className="text-white font-semibold">{formatHours(pay.totalHours)}</span>
                 </div>
                 {pay.premiumHours > 0 && (
                   <div className="flex justify-between text-xs">
                     <span className="text-zinc-500">{t.worker.premiumHoursLabel}</span>
-                    <span className="text-sky-400">{pay.premiumHours}h</span>
+                    <span className="text-sky-400">{formatHours(pay.premiumHours)}</span>
                   </div>
                 )}
                 {pay.weekly25Hours > 0 && (
                   <div className="flex justify-between text-xs">
                     <span className="text-zinc-500">{t.worker.weekly25Label}</span>
-                    <span className="text-sky-400">{pay.weekly25Hours}h</span>
+                    <span className="text-sky-400">{formatHours(pay.weekly25Hours)}</span>
                   </div>
                 )}
                 {pay.weekly50Hours > 0 && (
                   <div className="flex justify-between text-xs">
                     <span className="text-zinc-500">{t.worker.weekly50Label}</span>
-                    <span className="text-amber-400">{pay.weekly50Hours}h</span>
+                    <span className="text-amber-400">{formatHours(pay.weekly50Hours)}</span>
                   </div>
                 )}
                 <div className="flex justify-between pt-1">

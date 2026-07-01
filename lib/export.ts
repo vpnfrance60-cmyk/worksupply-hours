@@ -1,7 +1,16 @@
 import ExcelJS from 'exceljs';
 import type { Client, DailyLog, Worker } from './queries';
 import { computeWeekPay } from './pay';
+import { formatHours } from './format';
 import type { Dict, Lang } from './i18n';
+
+// Excel duration cells: value is a fraction of a day (hours / 24) and the
+// "[h]"h"mm" format renders it as "7h15" while staying numeric/summable.
+const HOUR_FMT = '[h]"h"mm';
+const asDuration = (cell: ExcelJS.Cell, hours: number) => {
+  cell.value = hours / 24;
+  cell.numFmt = HOUR_FMT;
+};
 
 type PayLabels = Dict['pay'];
 type StatusLabels = Dict['status'];
@@ -95,15 +104,15 @@ export function buildPayrollWorkbook(
     const row = ws.getRow(r);
     row.getCell(1).value = w.name;
     row.getCell(2).value = w.worker_code;
-    row.getCell(3).value = weekPay.totalHours;
-    row.getCell(4).value = nightHours;
-    row.getCell(5).value = weekendHours;
-    row.getCell(6).value = weekPay.weekly25Hours;
-    row.getCell(7).value = weekPay.weekly50Hours;
+    asDuration(row.getCell(3), weekPay.totalHours);
+    asDuration(row.getCell(4), nightHours);
+    asDuration(row.getCell(5), weekendHours);
+    asDuration(row.getCell(6), weekPay.weekly25Hours);
+    asDuration(row.getCell(7), weekPay.weekly50Hours);
     row.getCell(8).value = weekPay.pay;
     row.getCell(8).numFmt = '#,##0.00" €"';
     row.getCell(9).value = excluded
-      .map((l) => `${l.log_date} (${status[l.status]}, ${l.hours_worked}h)`)
+      .map((l) => `${l.log_date} (${status[l.status]}, ${formatHours(l.hours_worked)})`)
       .join('; ');
 
     for (let c = 3; c <= 8; c++) row.getCell(c).alignment = { horizontal: 'center' };
@@ -119,7 +128,7 @@ export function buildPayrollWorkbook(
   // ── Total row ──────────────────────────────────────────────────────
   const totalRow = ws.getRow(r + 1);
   totalRow.getCell(1).value = pay.total;
-  totalRow.getCell(3).value = totalHours;
+  asDuration(totalRow.getCell(3), totalHours);
   totalRow.getCell(8).value = totalPay;
   totalRow.getCell(8).numFmt = '#,##0.00" €"';
   for (let c = 1; c <= lastCol; c++) {

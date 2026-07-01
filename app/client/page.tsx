@@ -20,6 +20,7 @@ import {
   type LogStatus,
 } from '@/lib/queries';
 import { isWeekendDate, computeWeekPay } from '@/lib/pay';
+import { formatHours } from '@/lib/format';
 import { downloadPayrollXlsx } from '@/lib/export';
 import { useLang, dateLocale } from '@/lib/i18n';
 
@@ -234,9 +235,9 @@ export default function ClientReviewPage() {
                       return (
                         <td key={d} className="px-1.5 py-1.5">
                           <div className={`rounded-lg border-2 px-1.5 py-1 text-center shadow-md ${STATUS_BOX[log.status]}`}>
-                            <div className="text-white text-sm font-semibold">{log.hours_worked}h</div>
+                            <div className="text-white text-sm font-semibold">{formatHours(log.hours_worked)}</div>
                             {log.night_hours > 0 && (
-                              <div className="text-[10px] text-white/80">{log.night_hours}h {t.client.night}</div>
+                              <div className="text-[10px] text-white/80">{formatHours(log.night_hours)} {t.client.night}</div>
                             )}
                             {log.worker_comment && (
                               <div className="text-[10px] text-white/70 truncate" title={log.worker_comment}>
@@ -303,7 +304,7 @@ export default function ClientReviewPage() {
                       );
                     })}
                     <td className="text-center px-3 py-2 text-white font-medium whitespace-nowrap">
-                      {weekTotal}h
+                      {formatHours(weekTotal)}
                     </td>
                     <td className="text-center px-3 py-2 text-emerald-400 font-medium whitespace-nowrap">
                       {pay ? `€${pay.pay.toFixed(2)}` : '—'}
